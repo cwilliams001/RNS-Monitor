@@ -181,17 +181,15 @@
                     });
 
                     const date = new Date();
+                    const easternTime = new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }));
                     document.getElementById('lastUpdate').textContent = 
-                        date.toLocaleString('en-GB', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: false,
-                            timeZone: 'America/New_York'
-                        }) + ' Eastern Time (UTC-5)';
+                        easternTime.getFullYear() + '-' +
+                        String(easternTime.getMonth() + 1).padStart(2, '0') + '-' +
+                        String(easternTime.getDate()).padStart(2, '0') + ' ' +
+                        String(easternTime.getHours()).padStart(2, '0') + ':' +
+                        String(easternTime.getMinutes()).padStart(2, '0') + ':' +
+                        String(easternTime.getSeconds()).padStart(2, '0') + 
+                        ' Eastern Time (UTC-5)';
                 })
                 .catch(error => {
                     console.error('Error fetching status:', error);

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reticulum Network Status</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-metric: #363636;
+            --text-primary: #e1e1e1;
+            --text-secondary: #b0b0b0;
+            --accent-blue: #3498db;
+            --accent-blue-hover: #2980b9;
+            --success-green: #27ae60;
+            --error-red: #e74c3c;
+            --shadow-color: rgba(0,0,0,0.3);
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .interface {
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+
+        h1 {
+            color: var(--text-primary);
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: var(--text-primary);
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .status-up {
+            color: var(--success-green);
+            font-weight: bold;
+        }
+
+        .status-down {
+            color: var(--error-red);
+            font-weight: bold;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .metric {
+            background-color: var(--bg-metric);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        .last-update {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .refresh-button {
+            background-color: var(--accent-blue);
+            color: var(--text-primary);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.2s ease;
+        }
+
+        .refresh-button:hover {
+            background-color: var(--accent-blue-hover);
+        }
+
+        .metric:hover {
+            background-color: #404040;
+            transition: background-color 0.2s ease;
+        }
+
+        .interface:hover {
+            transform: translateY(-1px);
+            transition: transform 0.2s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Reticulum Network Status</h1>
+        <button class="refresh-button" onclick="updateStatus()">Refresh Now</button>
+    </div>
+    <div id="interfaces"></div>
+    <div class="last-update">Last updated: <span id="lastUpdate"></span></div>
+
+    <script>
+        function updateStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    const interfacesDiv = document.getElementById('interfaces');
+                    interfacesDiv.innerHTML = '';
+                    data.interfaces.forEach(iface => {
+                        const interfaceDiv = document.createElement('div');
+                        interfaceDiv.className = 'interface';
+                        
+                        let announceHtml = '';
+                        if (iface.announces) {
+                            announceHtml = `
+                                <div class="metric">
+                                    Announces:
+                                    <br> TX: ${iface.announces.outgoing.toFixed(2)}/s
+                                    <br> RX: ${iface.announces.incoming.toFixed(2)}/s
+                                </div>
+                            `;
+                        }
+                        let peersHtml = '';
+                        if (iface.peers !== undefined) {
+                            peersHtml = `
+                                <div class="metric">
+                                    Peers: ${iface.peers} reachable
+                                </div>
+                            `;
+                        }
+                        let clientsHtml = '';
+                        if (iface.clients !== undefined) {
+                            clientsHtml = `
+                                <div class="metric">
+                                    Clients: ${iface.clients}
+                                </div>
+                            `;
+                        }
+                        interfaceDiv.innerHTML = `
+                            <h2>${iface.name}</h2>
+                            <div class="status-${iface.status}">
+                                Status: ${iface.status.toUpperCase()}
+                            </div>
+                            <div class="metrics">
+                                <div class="metric">
+                                    Mode: ${iface.mode}
+                                </div>
+                                <div class="metric">
+                                    Bitrate: ${formatBitrate(iface.bitrate)}
+                                </div>
+                                <div class="metric">
+                                    RX: ${formatBytes(iface.traffic.rx)}
+                                </div>
+                                <div class="metric">
+                                    TX: ${formatBytes(iface.traffic.tx)}
+                                </div>
+                                ${peersHtml}
+                                ${clientsHtml}
+                                ${announceHtml}
+                            </div>
+                        `;
+                        
+                        interfacesDiv.appendChild(interfaceDiv);
+                    });
+
+                    const date = new Date();
+                    document.getElementById('lastUpdate').textContent = 
+                        date.toLocaleString('en-GB', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false,
+                            timeZone: 'America/New_York'
+                        }) + ' Eastern Time (UTC-5)';
+                })
+                .catch(error => {
+                    console.error('Error fetching status:', error);
+                    const interfacesDiv = document.getElementById('interfaces');
+                    interfacesDiv.innerHTML = `
+                        <div class="interface">
+                            <div style="color: var(--error-red);">
+                                Error fetching status data. Please try again later.
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let value = bytes;
+            let unitIndex = 0;
+            while (value >= 1024 && unitIndex < units.length - 1) {
+                value /= 1024;
+                unitIndex++;
+            }
+            return `${value.toFixed(2)} ${units[unitIndex]}`;
+        }
+
+        function formatBitrate(bps) {
+            if (!bps) return 'N/A';
+            const units = ['bps', 'Kbps', 'Mbps', 'Gbps'];
+            let value = bps;
+            let unitIndex = 0;
+            while (value >= 1000 && unitIndex < units.length - 1) {
+                value /= 1000;
+                unitIndex++;
+            }
+            return `${value.toFixed(2)} ${units[unitIndex]}`;
+        }
+
+        // Initial update
+        updateStatus();
+        // Update every 60 seconds
+        setInterval(updateStatus, 60000);
+    </script>
+</body>
+</html>

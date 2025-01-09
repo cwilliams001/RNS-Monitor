@@ -1,5 +1,7 @@
 # Reticulum Network Monitor
 
+![Reticulum Network Monitor Screenshot](images/screenshot.png)
+
 A lightweight web-based monitoring tool for Reticulum Network Stack (RNS) nodes. This tool provides real-time visibility into your RNS node's status, interfaces, and performance metrics. This is A work in progress and contributions are welcome.
 
 ## Important Note About This Project

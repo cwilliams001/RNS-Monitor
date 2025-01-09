@@ -2,11 +2,14 @@ import RNS
 import time
 import json
 import asyncio
+import re
 from aiohttp import web
 from datetime import datetime, timedelta
 
 class ReticulumMonitor:
-    def __init__(self):
+    def __init__(self, hide_ips=True, hide_clients=True):
+        self.hide_ips = hide_ips
+        self.hide_clients = hide_clients
         self.reticulum = RNS.Reticulum(require_shared_instance=True)
         self.status_history = {}
         self.last_check = None
@@ -16,16 +19,25 @@ class ReticulumMonitor:
             stats = self.reticulum.get_interface_stats()
             if stats is None:
                 return None
-
+            
             current_time = datetime.now().isoformat()
             status_data = {
                 'timestamp': current_time,
                 'interfaces': []
             }
-
+            
             for ifstat in stats['interfaces']:
+                # Skip client interfaces if hide_clients is enabled
+                if self.hide_clients and ifstat['name'].startswith('TCPInterface[Client on'):
+                    continue
+                    
+                # Mask IP addresses in interface names if hide_ips is enabled
+                display_name = ifstat['name']
+                if self.hide_ips:
+                    display_name = re.sub(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?', '[hidden]', display_name)
+                
                 interface_status = {
-                    'name': ifstat['name'],
+                    'name': display_name,
                     'status': 'up' if ifstat['status'] else 'down',
                     'mode': self._get_mode_string(ifstat['mode']),
                     'bitrate': ifstat.get('bitrate'),
@@ -34,7 +46,7 @@ class ReticulumMonitor:
                         'tx': ifstat['txb']
                     }
                 }
-
+                
                 # Add additional metrics if available
                 if 'peers' in ifstat:
                     interface_status['peers'] = ifstat['peers']
@@ -45,26 +57,28 @@ class ReticulumMonitor:
                         'incoming': ifstat['incoming_announce_frequency'],
                         'outgoing': ifstat['outgoing_announce_frequency']
                     }
-
+                    
                 status_data['interfaces'].append(interface_status)
-
+                
                 # Store in history
-                if ifstat['name'] not in self.status_history:
-                    self.status_history[ifstat['name']] = []
-                self.status_history[ifstat['name']].append({
+                if display_name not in self.status_history:
+                    self.status_history[display_name] = []
+                
+                self.status_history[display_name].append({
                     'timestamp': current_time,
                     'status': interface_status['status']
                 })
+                
                 # Keep only last 24 hours of history
                 cutoff_time = datetime.fromisoformat(current_time) - timedelta(hours=24)
-                self.status_history[ifstat['name']] = [
-                    entry for entry in self.status_history[ifstat['name']]
+                self.status_history[display_name] = [
+                    entry for entry in self.status_history[display_name]
                     if datetime.fromisoformat(entry['timestamp']) > cutoff_time
                 ]
-
+                
             self.last_check = current_time
             return status_data
-
+            
         except Exception as e:
             print(f"Error getting interface status: {str(e)}")
             return None
@@ -105,14 +119,17 @@ async def periodic_status_check(monitor):
         await asyncio.sleep(60)
 
 async def main():
-    # Initialize monitor
-    monitor = ReticulumMonitor()
+    # Initialize monitor with configuration
+    monitor = ReticulumMonitor(
+        hide_ips=True,     # Set to False to show IPs
+        hide_clients=True  # Set to False to show client interfaces
+    )
 
     # Start web server
     server = WebServer(monitor)
     runner = web.AppRunner(server.app)
     await runner.setup()
-    site = web.TCPSite(runner, 'localhost', 8080)
+    site = web.TCPSite(runner, 'localhost', 1149)
     await site.start()
 
     # Start periodic status checking

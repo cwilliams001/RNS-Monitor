@@ -123,6 +123,7 @@
                 .then(data => {
                     const interfacesDiv = document.getElementById('interfaces');
                     interfacesDiv.innerHTML = '';
+                    
                     data.interfaces.forEach(iface => {
                         const interfaceDiv = document.createElement('div');
                         interfaceDiv.className = 'interface';
@@ -137,6 +138,7 @@
                                 </div>
                             `;
                         }
+                        
                         let peersHtml = '';
                         if (iface.peers !== undefined) {
                             peersHtml = `
@@ -145,6 +147,7 @@
                                 </div>
                             `;
                         }
+                        
                         let clientsHtml = '';
                         if (iface.clients !== undefined) {
                             clientsHtml = `
@@ -153,6 +156,7 @@
                                 </div>
                             `;
                         }
+
                         interfaceDiv.innerHTML = `
                             <h2>${iface.name}</h2>
                             <div class="status-${iface.status}">

@@ -47,6 +47,19 @@ This tool is provided as a community contribution to help visualize RNS node sta
 - Python packages:
   - aiohttp
 
+## Configuration
+The monitor comes with security-focused defaults:
+- IP addresses are masked by default
+- Client interface information is hidden by default
+
+These can be configured in `monitor.py`:
+
+```python
+monitor = ReticulumMonitor(
+    hide_ips=True,     # Set to False to show IPs
+    hide_clients=True  # Set to False to show client interfaces
+)
+```
 ## Installation
 
 1. Install required packages:
@@ -137,14 +150,19 @@ sudo ufw allow 443/tcp
 ## Usage
 
 Access the monitor through:
-- Local: `http://localhost:8080`
+- Local: `http://localhost:1149`
 - Remote (with Caddy): `https://your-domain.com`
+  
+## Port Selection
+The monitor runs on port 1149 by default, a homage to RFC 1149 (IP over Avian Carriers). While our packets travel a bit faster than carrier pigeons, I liked the reference to alternative networking approaches!
 
 ## Security Considerations
 
 - The monitor uses the shared RNS instance and doesn't require additional RNS configuration
 - Consider using Caddy for HTTPS encryption
 - Monitor runs on localhost by default
+- Client interface IPs are hidden by default for public-facing deployments
+- IP addresses in interface names are masked for security
 
 ## Contributing
 
